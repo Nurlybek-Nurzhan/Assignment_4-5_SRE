@@ -15,3 +15,15 @@ variable "ami_id" {
   type        = string
   default     = "ami-0c02fb55956c7d316"
 }
+
+variable "allowed_ssh_cidr" {
+  description = "CIDR block allowed to SSH into the instance. Restrict to your IP in production."
+  type        = string
+  default     = "0.0.0.0/0"
+}
+
+variable "ssh_key_name" {
+  description = "Name of the AWS key pair for SSH access. Leave empty to skip SSH key (demo only)."
+  type        = string
+  default     = ""
+}
