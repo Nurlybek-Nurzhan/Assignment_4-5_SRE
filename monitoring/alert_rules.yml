@@ -1,0 +1,21 @@
+groups:
+  - name: microshop_alerts
+    rules:
+
+      - alert: OrderServiceErrors
+        expr: increase(order_errors_total[1m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Order Service is experiencing errors"
+          description: "order_errors_total has increased in the last 1 minute — DB connection likely broken."
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is DOWN"
+          description: "Prometheus cannot scrape {{ $labels.job }} — the service may have crashed."
