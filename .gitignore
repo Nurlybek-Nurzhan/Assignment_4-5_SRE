@@ -1,0 +1,41 @@
+# Terraform - provider binaries only (NOT .tf files)
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.*.backup
+.terraform.lock.hcl
+crash.log
+
+# AWS credentials - NEVER commit these
+*.credentials
+credentials.csv
+aws_credentials*
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

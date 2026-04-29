@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MicroShop Dashboard</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1e293b;
+      padding: 20px 40px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      color: #38bdf8;
+    }
+
+    header span {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.3s;
+    }
+
+    .card:hover {
+      border-color: #38bdf8;
+    }
+
+    .card .service-name {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .card .status {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot.ok {
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+    }
+
+    .dot.error {
+      background: #ef4444;
+      box-shadow: 0 0 6px #ef4444;
+    }
+
+    .dot.loading {
+      background: #f59e0b;
+      box-shadow: 0 0 6px #f59e0b;
+    }
+
+    .card .detail {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 8px;
+    }
+
+    .links {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .links a {
+      font-size: 0.78rem;
+      color: #38bdf8;
+      text-decoration: none;
+      border: 1px solid #334155;
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+
+    .links a:hover {
+      background: #334155;
+    }
+
+    .data-section {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .data-section h2 {
+      font-size: 1rem;
+      margin-bottom: 16px;
+      color: #38bdf8;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      color: #64748b;
+      border-bottom: 1px solid #334155;
+    }
+
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    tr:hover td {
+      background: #0f172a;
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+    }
+
+    .badge.pending {
+      background: #78350f;
+      color: #fde68a;
+    }
+
+    .badge.ok {
+      background: #14532d;
+      color: #86efac;
+    }
+
+    .btn {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-top: 12px;
+    }
+
+    .btn:hover {
+      background: #0284c7;
+    }
+
+    .monitoring {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .monitor-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 16px 24px;
+      flex: 1;
+      min-width: 180px;
+      text-align: center;
+    }
+
+    .monitor-card a {
+      color: #38bdf8;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .monitor-card p {
+      color: #64748b;
+      font-size: 0.78rem;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div>
+      <h1>MicroShop Dashboard</h1>
+      <span>SRE Assignment 4-5 - Microservices Monitoring</span>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <p class="section-title">Service Health</p>
+    <div class="grid" id="service-grid">
+      <div class="card" id="card-auth">
+        <div class="service-name">Auth Service</div>
+        <div class="status">
+          <div class="dot loading" id="dot-auth"></div><span id="status-auth">Checking...</span>
+        </div>
+        <div class="detail">Port 8001 · /health · /login</div>
+        <div class="links"><a href="http://localhost:8001/health" target="_blank">Health</a><a
+            href="http://localhost:8001/metrics" target="_blank">Metrics</a></div>
+      </div>
+      <div class="card" id="card-product">
+        <div class="service-name">Product Service</div>
+        <div class="status">
+          <div class="dot loading" id="dot-product"></div><span id="status-product">Checking...</span>
+        </div>
+        <div class="detail">Port 8002 · /health · /products</div>
+        <div class="links"><a href="http://localhost:8002/health" target="_blank">Health</a><a
+            href="http://localhost:8002/metrics" target="_blank">Metrics</a></div>
+      </div>
+      <div class="card" id="card-order">
+        <div class="service-name">Order Service</div>
+        <div class="status">
+          <div class="dot loading" id="dot-order"></div><span id="status-order">Checking...</span>
+        </div>
+        <div class="detail">Port 8003 · /health · /orders</div>
+        <div class="links"><a href="http://localhost:8003/health" target="_blank">Health</a><a
+            href="http://localhost:8003/metrics" target="_blank">Metrics</a></div>
+      </div>
+      <div class="card" id="card-user">
+        <div class="service-name">User Service</div>
+        <div class="status">
+          <div class="dot loading" id="dot-user"></div><span id="status-user">Checking...</span>
+        </div>
+        <div class="detail">Port 8004 · /health · /users</div>
+        <div class="links"><a href="http://localhost:8004/health" target="_blank">Health</a><a
+            href="http://localhost:8004/metrics" target="_blank">Metrics</a></div>
+      </div>
+      <div class="card" id="card-chat">
+        <div class="service-name">Chat Service</div>
+        <div class="status">
+          <div class="dot loading" id="dot-chat"></div><span id="status-chat">Checking...</span>
+        </div>
+        <div class="detail">Port 8005 · /health · /messages</div>
+        <div class="links"><a href="http://localhost:8005/health" target="_blank">Health</a><a
+            href="http://localhost:8005/metrics" target="_blank">Metrics</a></div>
+      </div>
+    </div>
+
+    <p class="section-title">Products</p>
+    <div class="data-section">
+      <h2>Product Catalog</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Stock</th>
+          </tr>
+        </thead>
+        <tbody id="products-table">
+          <tr>
+            <td colspan="4" style="color:#64748b">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="section-title">Orders</p>
+    <div class="data-section">
+      <h2>Recent Orders</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>User ID</th>
+            <th>Product ID</th>
+            <th>Quantity</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="orders-table">
+          <tr>
+            <td colspan="5" style="color:#64748b">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="btn" onclick="createTestOrder()">+ Create Test Order</button>
+    </div>
+
+    <p class="section-title">Monitoring</p>
+    <div class="monitoring">
+      <div class="monitor-card"><a href="http://localhost:9090" target="_blank">Prometheus</a>
+        <p>Metrics collection · Port 9090</p>
+      </div>
+      <div class="monitor-card"><a href="http://localhost:3000" target="_blank">Grafana</a>
+        <p>Dashboards · Port 3000</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const services = [
+      { key: "auth",    url: "/api/auth/health" },
+      { key: "product", url: "/api/products/health" },
+      { key: "order",   url: "/api/orders/health" },
+      { key: "user",    url: "/api/users/health" },
+      { key: "chat",    url: "/api/chat/health" },
+    ];
+
+    async function checkHealth(svc) {
+      const dot = document.getElementById(`dot-${svc.key}`);
+      const label = document.getElementById(`status-${svc.key}`);
+      try {
+        const res = await fetch(svc.url, { signal: AbortSignal.timeout(3000) });
+        const data = await res.json();
+        if (res.ok) {
+          dot.className = "dot ok";
+          label.textContent = data.db ? `OK · DB: ${data.db}` : "OK";
+        } else {
+          dot.className = "dot error";
+          label.textContent = `Error ${res.status}`;
+        }
+      } catch {
+        dot.className = "dot error";
+        label.textContent = "Unreachable";
+      }
+    }
+
+    async function loadProducts() {
+      try {
+        const res = await fetch("/api/products/products");
+        const data = await res.json();
+        const tbody = document.getElementById("products-table");
+        tbody.innerHTML = data.products.map(p =>
+          `<tr><td>${p.id}</td><td>${p.name}</td><td>$${p.price}</td><td>${p.stock}</td></tr>`
+        ).join("");
+      } catch {
+        document.getElementById("products-table").innerHTML = `<tr><td colspan="4" style="color:#ef4444">Service unavailable</td></tr>`;
+      }
+    }
+
+    async function loadOrders() {
+      try {
+        const res = await fetch("/api/orders/orders");
+        const data = await res.json();
+        const tbody = document.getElementById("orders-table");
+        if (data.orders.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="color:#64748b">No orders yet</td></tr>`;
+        } else {
+          tbody.innerHTML = data.orders.map(o =>
+            `<tr><td>${o.id}</td><td>${o.user_id}</td><td>${o.product_id}</td><td>${o.quantity}</td><td><span class="badge pending">${o.status}</span></td></tr>`
+          ).join("");
+        }
+      } catch {
+        document.getElementById("orders-table").innerHTML = `<tr><td colspan="5" style="color:#ef4444">Order service unavailable</td></tr>`;
+      }
+    }
+
+    async function createTestOrder() {
+      try {
+        const res = await fetch("/api/orders/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: 1, product_id: 1, quantity: 2 })
+        });
+        const data = await res.json();
+        alert(`Order created! ID: ${data.order_id}`);
+        loadOrders();
+      } catch {
+        alert("Failed to create order - Order Service may be down!");
+      }
+    }
+
+    function refreshAll() {
+      services.forEach(checkHealth);
+      loadProducts();
+      loadOrders();
+    }
+
+    refreshAll();
+    setInterval(refreshAll, 10000);
+  </script>
+</body>
+
+</html>
