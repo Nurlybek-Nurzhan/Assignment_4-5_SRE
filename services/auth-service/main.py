@@ -2,13 +2,26 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
+from jose import jwt
+from passlib.context import CryptContext
+import os
 import uvicorn
 
 app = FastAPI(title="Auth Service")
 
 REQUEST_COUNT = Counter("auth_requests_total", "Total requests to auth service", ["method", "endpoint"])
 
-USERS = {"nurzhan": "password123", "admin": "admin"}
+SECRET_KEY = os.getenv("JWT_SECRET", "changeme-super-secret-key")
+ALGORITHM  = "HS256"
+
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Credentials loaded from environment variables, not hardcoded
+_raw = {
+    os.getenv("AUTH_USER_1", "nurzhan"): os.getenv("AUTH_PASS_1", "password123"),
+    os.getenv("AUTH_USER_2", "admin"):   os.getenv("AUTH_PASS_2", "admin"),
+}
+USERS = {u: pwd_ctx.hash(p) for u, p in _raw.items()}
 
 class LoginRequest(BaseModel):
     username: str
@@ -22,9 +35,11 @@ def health():
 @app.post("/login")
 def login(req: LoginRequest):
     REQUEST_COUNT.labels(method="POST", endpoint="/login").inc()
-    if USERS.get(req.username) == req.password:
-        return {"token": "fake-jwt-token-123", "username": req.username}
-    raise HTTPException(status_code=401, detail="Invalid credentials")
+    hashed = USERS.get(req.username)
+    if not hashed or not pwd_ctx.verify(req.password, hashed):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = jwt.encode({"sub": req.username}, SECRET_KEY, algorithm=ALGORITHM)
+    return {"token": token, "username": req.username}
 
 @app.get("/metrics")
 def metrics():

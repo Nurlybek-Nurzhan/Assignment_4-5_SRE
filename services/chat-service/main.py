@@ -1,18 +1,33 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
+from jose import jwt, JWTError
 from datetime import datetime
+import os
 import uvicorn
 
 app = FastAPI(title="Chat Service")
 
 REQUEST_COUNT = Counter("chat_requests_total", "Total requests to chat service", ["method", "endpoint"])
 
+SECRET_KEY = os.getenv("JWT_SECRET", "changeme-super-secret-key")
+ALGORITHM  = "HS256"
+
 MESSAGES = [
-    {"id": 1, "from_user": "alice", "to_user": "bob", "text": "Hey Bob!", "timestamp": "2026-04-29T10:00:00"},
-    {"id": 2, "from_user": "bob", "to_user": "alice", "text": "Hi Alice!", "timestamp": "2026-04-29T10:01:00"},
+    {"id": 1, "from_user": "alice", "to_user": "bob",   "text": "Hey Bob!",   "timestamp": "2026-04-29T10:00:00"},
+    {"id": 2, "from_user": "bob",   "to_user": "alice", "text": "Hi Alice!", "timestamp": "2026-04-29T10:01:00"},
 ]
+
+def verify_token(authorization: str | None) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload["sub"]
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 class MessageRequest(BaseModel):
     from_user: str
@@ -25,12 +40,14 @@ def health():
     return {"status": "ok", "service": "chat-service"}
 
 @app.get("/messages")
-def get_messages():
+def get_messages(authorization: str | None = Header(default=None)):
+    verify_token(authorization)
     REQUEST_COUNT.labels(method="GET", endpoint="/messages").inc()
     return {"messages": MESSAGES, "total": len(MESSAGES)}
 
 @app.post("/messages")
-def send_message(msg: MessageRequest):
+def send_message(msg: MessageRequest, authorization: str | None = Header(default=None)):
+    verify_token(authorization)
     REQUEST_COUNT.labels(method="POST", endpoint="/messages").inc()
     new_msg = {
         "id": len(MESSAGES) + 1,

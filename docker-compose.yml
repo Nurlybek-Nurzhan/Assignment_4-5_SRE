@@ -7,6 +7,7 @@ networks:
 volumes:
   postgres-data:
   grafana-data:
+  product-data:
 
 services:
 
@@ -15,7 +16,7 @@ services:
     container_name: postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
       POSTGRES_DB: ordersdb
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -32,6 +33,12 @@ services:
     container_name: auth-service
     ports:
       - "8001:8001"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-changeme-super-secret-key}
+      AUTH_USER_1: ${AUTH_USER_1:-nurzhan}
+      AUTH_PASS_1: ${AUTH_PASS_1:-password123}
+      AUTH_USER_2: ${AUTH_USER_2:-admin}
+      AUTH_PASS_2: ${AUTH_PASS_2:-admin}
     networks:
       - microshop-net
     restart: unless-stopped
@@ -41,6 +48,8 @@ services:
     container_name: product-service
     ports:
       - "8002:8002"
+    volumes:
+      - product-data:/app/data
     networks:
       - microshop-net
     restart: unless-stopped
@@ -55,7 +64,7 @@ services:
       DB_PORT: "5432"
       DB_NAME: ordersdb
       DB_USER: postgres
-      DB_PASS: postgres
+      DB_PASS: ${DB_PASS:-postgres}
     networks:
       - microshop-net
     depends_on:
@@ -70,6 +79,9 @@ services:
       - "8004:8004"
     networks:
       - microshop-net
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   chat-service:
@@ -77,8 +89,13 @@ services:
     container_name: chat-service
     ports:
       - "8005:8005"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-changeme-super-secret-key}
     networks:
       - microshop-net
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -111,8 +128,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASS:-admin}
     volumes:
       - grafana-data:/var/lib/grafana
     networks:
