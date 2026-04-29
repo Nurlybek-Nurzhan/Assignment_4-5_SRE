@@ -6,11 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MicroShop Dashboard</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -25,24 +21,39 @@
       border-bottom: 1px solid #334155;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: space-between;
     }
 
-    header h1 {
-      font-size: 1.5rem;
-      color: #38bdf8;
+    header h1 { font-size: 1.5rem; color: #38bdf8; }
+    header span { font-size: 0.85rem; color: #94a3b8; }
+
+    #login-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    header span {
+    #login-bar input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 6px 12px;
+      border-radius: 8px;
       font-size: 0.85rem;
+      width: 130px;
+    }
+
+    #login-bar input::placeholder { color: #475569; }
+
+    #login-status {
+      font-size: 0.8rem;
       color: #94a3b8;
     }
 
-    .container {
-      max-width: 1100px;
-      margin: 40px auto;
-      padding: 0 20px;
-    }
+    #login-status.logged-in { color: #22c55e; }
+    #login-status.error     { color: #ef4444; }
+
+    .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
 
     .section-title {
       font-size: 1rem;
@@ -67,58 +78,17 @@
       transition: border-color 0.3s;
     }
 
-    .card:hover {
-      border-color: #38bdf8;
-    }
+    .card:hover { border-color: #38bdf8; }
+    .card .service-name { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+    .card .status { font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
 
-    .card .service-name {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot.ok      { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .dot.error   { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    .dot.loading { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
 
-    .card .status {
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .dot.ok {
-      background: #22c55e;
-      box-shadow: 0 0 6px #22c55e;
-    }
-
-    .dot.error {
-      background: #ef4444;
-      box-shadow: 0 0 6px #ef4444;
-    }
-
-    .dot.loading {
-      background: #f59e0b;
-      box-shadow: 0 0 6px #f59e0b;
-    }
-
-    .card .detail {
-      font-size: 0.75rem;
-      color: #64748b;
-      margin-top: 8px;
-    }
-
-    .links {
-      display: flex;
-      gap: 12px;
-      margin-top: 8px;
-      flex-wrap: wrap;
-    }
-
+    .card .detail { font-size: 0.75rem; color: #64748b; margin-top: 8px; }
+    .links { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
     .links a {
       font-size: 0.78rem;
       color: #38bdf8;
@@ -127,10 +97,7 @@
       padding: 3px 10px;
       border-radius: 6px;
     }
-
-    .links a:hover {
-      background: #334155;
-    }
+    .links a:hover { background: #334155; }
 
     .data-section {
       background: #1e293b;
@@ -140,49 +107,16 @@
       margin-bottom: 24px;
     }
 
-    .data-section h2 {
-      font-size: 1rem;
-      margin-bottom: 16px;
-      color: #38bdf8;
-    }
+    .data-section h2 { font-size: 1rem; margin-bottom: 16px; color: #38bdf8; }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 8px 12px; color: #64748b; border-bottom: 1px solid #334155; }
+    td { padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+    tr:hover td { background: #0f172a; }
 
-    th {
-      text-align: left;
-      padding: 8px 12px;
-      color: #64748b;
-      border-bottom: 1px solid #334155;
-    }
-
-    td {
-      padding: 8px 12px;
-      border-bottom: 1px solid #1e293b;
-    }
-
-    tr:hover td {
-      background: #0f172a;
-    }
-
-    .badge {
-      padding: 2px 8px;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-    }
-
-    .badge.pending {
-      background: #78350f;
-      color: #fde68a;
-    }
-
-    .badge.ok {
-      background: #14532d;
-      color: #86efac;
-    }
+    .badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; }
+    .badge.pending  { background: #78350f; color: #fde68a; }
+    .badge.ok       { background: #14532d; color: #86efac; }
 
     .btn {
       background: #0ea5e9;
@@ -194,17 +128,11 @@
       font-size: 0.85rem;
       margin-top: 12px;
     }
+    .btn:hover { background: #0284c7; }
+    .btn.secondary { background: #334155; margin-left: 8px; }
+    .btn.secondary:hover { background: #475569; }
 
-    .btn:hover {
-      background: #0284c7;
-    }
-
-    .monitoring {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
+    .monitoring { display: flex; gap: 16px; flex-wrap: wrap; }
     .monitor-card {
       background: #0f172a;
       border: 1px solid #334155;
@@ -214,18 +142,46 @@
       min-width: 180px;
       text-align: center;
     }
+    .monitor-card a { color: #38bdf8; text-decoration: none; font-size: 0.95rem; font-weight: 600; }
+    .monitor-card p { color: #64748b; font-size: 0.78rem; margin-top: 4px; }
 
-    .monitor-card a {
-      color: #38bdf8;
-      text-decoration: none;
-      font-size: 0.95rem;
-      font-weight: 600;
+    .chat-messages {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 12px;
     }
 
-    .monitor-card p {
+    .chat-msg {
+      padding: 6px 0;
+      border-bottom: 1px solid #1e293b;
+      font-size: 0.85rem;
+    }
+
+    .chat-msg .from { color: #38bdf8; font-weight: 600; margin-right: 6px; }
+    .chat-msg .time { color: #475569; font-size: 0.75rem; margin-left: 6px; }
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .chat-input-row input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .chat-locked {
       color: #64748b;
-      font-size: 0.78rem;
-      margin-top: 4px;
+      font-size: 0.85rem;
+      padding: 12px 0;
     }
   </style>
 </head>
@@ -236,56 +192,63 @@
       <h1>MicroShop Dashboard</h1>
       <span>SRE Assignment 4-5 - Microservices Monitoring</span>
     </div>
+    <div id="login-bar">
+      <input type="text"     id="input-username" placeholder="Username" value="nurzhan" />
+      <input type="password" id="input-password" placeholder="Password" value="password123" />
+      <button class="btn" onclick="doLogin()">Login</button>
+      <button class="btn secondary" id="btn-logout" onclick="doLogout()" style="display:none">Logout</button>
+      <span id="login-status">Not logged in</span>
+    </div>
   </header>
 
   <div class="container">
 
     <p class="section-title">Service Health</p>
     <div class="grid" id="service-grid">
-      <div class="card" id="card-auth">
+      <div class="card">
         <div class="service-name">Auth Service</div>
-        <div class="status">
-          <div class="dot loading" id="dot-auth"></div><span id="status-auth">Checking...</span>
-        </div>
+        <div class="status"><div class="dot loading" id="dot-auth"></div><span id="status-auth">Checking...</span></div>
         <div class="detail">Port 8001 · /health · /login</div>
-        <div class="links"><a href="http://localhost:8001/health" target="_blank">Health</a><a
-            href="http://localhost:8001/metrics" target="_blank">Metrics</a></div>
+        <div class="links">
+          <a href="/api/auth/health"   target="_blank">Health</a>
+          <a href="/api/auth/metrics"  target="_blank">Metrics</a>
+        </div>
       </div>
-      <div class="card" id="card-product">
+      <div class="card">
         <div class="service-name">Product Service</div>
-        <div class="status">
-          <div class="dot loading" id="dot-product"></div><span id="status-product">Checking...</span>
-        </div>
+        <div class="status"><div class="dot loading" id="dot-product"></div><span id="status-product">Checking...</span></div>
         <div class="detail">Port 8002 · /health · /products</div>
-        <div class="links"><a href="http://localhost:8002/health" target="_blank">Health</a><a
-            href="http://localhost:8002/metrics" target="_blank">Metrics</a></div>
+        <div class="links">
+          <a href="/api/products/health"  target="_blank">Health</a>
+          <a href="/api/products/metrics" target="_blank">Metrics</a>
+        </div>
       </div>
-      <div class="card" id="card-order">
+      <div class="card">
         <div class="service-name">Order Service</div>
-        <div class="status">
-          <div class="dot loading" id="dot-order"></div><span id="status-order">Checking...</span>
-        </div>
+        <div class="status"><div class="dot loading" id="dot-order"></div><span id="status-order">Checking...</span></div>
         <div class="detail">Port 8003 · /health · /orders</div>
-        <div class="links"><a href="http://localhost:8003/health" target="_blank">Health</a><a
-            href="http://localhost:8003/metrics" target="_blank">Metrics</a></div>
+        <div class="links">
+          <a href="/api/orders/health"  target="_blank">Health</a>
+          <a href="/api/orders/metrics" target="_blank">Metrics</a>
+        </div>
       </div>
-      <div class="card" id="card-user">
+      <div class="card">
         <div class="service-name">User Service</div>
-        <div class="status">
-          <div class="dot loading" id="dot-user"></div><span id="status-user">Checking...</span>
-        </div>
+        <div class="status"><div class="dot loading" id="dot-user"></div><span id="status-user">Checking...</span></div>
         <div class="detail">Port 8004 · /health · /users</div>
-        <div class="links"><a href="http://localhost:8004/health" target="_blank">Health</a><a
-            href="http://localhost:8004/metrics" target="_blank">Metrics</a></div>
-      </div>
-      <div class="card" id="card-chat">
-        <div class="service-name">Chat Service</div>
-        <div class="status">
-          <div class="dot loading" id="dot-chat"></div><span id="status-chat">Checking...</span>
+        <div class="links">
+          <a href="/api/users/health"  target="_blank">Health</a>
+          <a href="/api/users/metrics" target="_blank">Metrics</a>
         </div>
+      </div>
+      <div class="card">
+        <div class="service-name">Chat Service</div>
+        <div class="status"><div class="dot loading" id="dot-chat"></div><span id="status-chat">Checking...</span></div>
         <div class="detail">Port 8005 · /health · /messages</div>
-        <div class="links"><a href="http://localhost:8005/health" target="_blank">Health</a><a
-            href="http://localhost:8005/metrics" target="_blank">Metrics</a></div>
+        <div class="links">
+          <a href="/api/chat/health"  target="_blank">Health</a>
+          <a href="/api/chat/metrics" target="_blank">Metrics</a>
+        </div>
       </div>
     </div>
 
@@ -293,18 +256,9 @@
     <div class="data-section">
       <h2>Product Catalog</h2>
       <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Stock</th>
-          </tr>
-        </thead>
+        <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th></tr></thead>
         <tbody id="products-table">
-          <tr>
-            <td colspan="4" style="color:#64748b">Loading...</td>
-          </tr>
+          <tr><td colspan="4" style="color:#64748b">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -313,30 +267,30 @@
     <div class="data-section">
       <h2>Recent Orders</h2>
       <table>
-        <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>User ID</th>
-            <th>Product ID</th>
-            <th>Quantity</th>
-            <th>Status</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Order ID</th><th>User ID</th><th>Product ID</th><th>Quantity</th><th>Status</th></tr></thead>
         <tbody id="orders-table">
-          <tr>
-            <td colspan="5" style="color:#64748b">Loading...</td>
-          </tr>
+          <tr><td colspan="5" style="color:#64748b">Loading...</td></tr>
         </tbody>
       </table>
       <button class="btn" onclick="createTestOrder()">+ Create Test Order</button>
     </div>
 
+    <p class="section-title">Chat</p>
+    <div class="data-section">
+      <h2>Messages <span style="font-size:0.8rem;color:#64748b;font-weight:normal">(requires login)</span></h2>
+      <div id="chat-area">
+        <p class="chat-locked">Login to view and send messages.</p>
+      </div>
+    </div>
+
     <p class="section-title">Monitoring</p>
     <div class="monitoring">
-      <div class="monitor-card"><a href="http://localhost:9090" target="_blank">Prometheus</a>
+      <div class="monitor-card">
+        <a href="http://localhost:9090" target="_blank">Prometheus</a>
         <p>Metrics collection · Port 9090</p>
       </div>
-      <div class="monitor-card"><a href="http://localhost:3000" target="_blank">Grafana</a>
+      <div class="monitor-card">
+        <a href="http://localhost:3000" target="_blank">Grafana</a>
         <p>Dashboards · Port 3000</p>
       </div>
     </div>
@@ -344,6 +298,9 @@
   </div>
 
   <script>
+    let authToken = null;
+    let loggedInUser = null;
+
     const services = [
       { key: "auth",    url: "/api/auth/health" },
       { key: "product", url: "/api/products/health" },
@@ -352,58 +309,150 @@
       { key: "chat",    url: "/api/chat/health" },
     ];
 
+    async function doLogin() {
+      const username = document.getElementById("input-username").value.trim();
+      const password = document.getElementById("input-password").value.trim();
+      const statusEl = document.getElementById("login-status");
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+        if (!res.ok) {
+          statusEl.textContent = "Invalid credentials";
+          statusEl.className = "error";
+          return;
+        }
+        const data = await res.json();
+        authToken = data.token;
+        loggedInUser = data.username;
+        statusEl.textContent = `Logged in as ${loggedInUser}`;
+        statusEl.className = "logged-in";
+        document.getElementById("btn-logout").style.display = "inline-block";
+        loadChat();
+      } catch {
+        statusEl.textContent = "Auth service unreachable";
+        statusEl.className = "error";
+      }
+    }
+
+    function doLogout() {
+      authToken = null;
+      loggedInUser = null;
+      const statusEl = document.getElementById("login-status");
+      statusEl.textContent = "Not logged in";
+      statusEl.className = "";
+      document.getElementById("btn-logout").style.display = "none";
+      document.getElementById("chat-area").innerHTML = `<p class="chat-locked">Login to view and send messages.</p>`;
+    }
+
+    async function loadChat() {
+      if (!authToken) return;
+      const area = document.getElementById("chat-area");
+      try {
+        const res = await fetch("/api/chat/messages", {
+          headers: { "Authorization": `Bearer ${authToken}` }
+        });
+        if (res.status === 401) {
+          area.innerHTML = `<p class="chat-locked">Session expired. Please login again.</p>`;
+          doLogout();
+          return;
+        }
+        const data = await res.json();
+        const msgs = data.messages.map(m => {
+          const time = m.timestamp ? m.timestamp.substring(11, 16) : "";
+          return `<div class="chat-msg">
+            <span class="from">${m.from_user} → ${m.to_user}</span>${m.text}<span class="time">${time}</span>
+          </div>`;
+        }).join("");
+        area.innerHTML = `
+          <div class="chat-messages">${msgs || '<p style="color:#64748b">No messages yet.</p>'}</div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-to"   placeholder="To" value="bob" style="max-width:100px"/>
+            <input type="text" id="chat-text" placeholder="Message..." />
+            <button class="btn" onclick="sendMessage()">Send</button>
+          </div>`;
+      } catch {
+        area.innerHTML = `<p class="chat-locked" style="color:#ef4444">Chat service unavailable.</p>`;
+      }
+    }
+
+    async function sendMessage() {
+      if (!authToken) return;
+      const to   = document.getElementById("chat-to").value.trim();
+      const text = document.getElementById("chat-text").value.trim();
+      if (!text) return;
+      try {
+        await fetch("/api/chat/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ from_user: loggedInUser, to_user: to, text })
+        });
+        document.getElementById("chat-text").value = "";
+        loadChat();
+      } catch {
+        alert("Failed to send message");
+      }
+    }
+
     async function checkHealth(svc) {
-      const dot = document.getElementById(`dot-${svc.key}`);
+      const dot   = document.getElementById(`dot-${svc.key}`);
       const label = document.getElementById(`status-${svc.key}`);
       try {
-        const res = await fetch(svc.url, { signal: AbortSignal.timeout(3000) });
+        const res  = await fetch(svc.url, { signal: AbortSignal.timeout(3000) });
         const data = await res.json();
         if (res.ok) {
-          dot.className = "dot ok";
+          dot.className   = "dot ok";
           label.textContent = data.db ? `OK · DB: ${data.db}` : "OK";
         } else {
-          dot.className = "dot error";
+          dot.className   = "dot error";
           label.textContent = `Error ${res.status}`;
         }
       } catch {
-        dot.className = "dot error";
+        dot.className   = "dot error";
         label.textContent = "Unreachable";
       }
     }
 
     async function loadProducts() {
       try {
-        const res = await fetch("/api/products/products");
+        const res  = await fetch("/api/products/products");
         const data = await res.json();
-        const tbody = document.getElementById("products-table");
-        tbody.innerHTML = data.products.map(p =>
+        document.getElementById("products-table").innerHTML = data.products.map(p =>
           `<tr><td>${p.id}</td><td>${p.name}</td><td>$${p.price}</td><td>${p.stock}</td></tr>`
         ).join("");
       } catch {
-        document.getElementById("products-table").innerHTML = `<tr><td colspan="4" style="color:#ef4444">Service unavailable</td></tr>`;
+        document.getElementById("products-table").innerHTML =
+          `<tr><td colspan="4" style="color:#ef4444">Service unavailable</td></tr>`;
       }
     }
 
     async function loadOrders() {
       try {
-        const res = await fetch("/api/orders/orders");
+        const res  = await fetch("/api/orders/orders");
         const data = await res.json();
         const tbody = document.getElementById("orders-table");
-        if (data.orders.length === 0) {
+        if (!data.orders || data.orders.length === 0) {
           tbody.innerHTML = `<tr><td colspan="5" style="color:#64748b">No orders yet</td></tr>`;
         } else {
           tbody.innerHTML = data.orders.map(o =>
-            `<tr><td>${o.id}</td><td>${o.user_id}</td><td>${o.product_id}</td><td>${o.quantity}</td><td><span class="badge pending">${o.status}</span></td></tr>`
+            `<tr><td>${o.id}</td><td>${o.user_id}</td><td>${o.product_id}</td><td>${o.quantity}</td>
+             <td><span class="badge pending">${o.status}</span></td></tr>`
           ).join("");
         }
       } catch {
-        document.getElementById("orders-table").innerHTML = `<tr><td colspan="5" style="color:#ef4444">Order service unavailable</td></tr>`;
+        document.getElementById("orders-table").innerHTML =
+          `<tr><td colspan="5" style="color:#ef4444">Order service unavailable</td></tr>`;
       }
     }
 
     async function createTestOrder() {
       try {
-        const res = await fetch("/api/orders/orders", {
+        const res  = await fetch("/api/orders/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: 1, product_id: 1, quantity: 2 })
@@ -412,7 +461,7 @@
         alert(`Order created! ID: ${data.order_id}`);
         loadOrders();
       } catch {
-        alert("Failed to create order - Order Service may be down!");
+        alert("Failed to create order — Order Service may be down!");
       }
     }
 
@@ -420,11 +469,11 @@
       services.forEach(checkHealth);
       loadProducts();
       loadOrders();
+      if (authToken) loadChat();
     }
 
     refreshAll();
     setInterval(refreshAll, 10000);
   </script>
 </body>
-
 </html>
