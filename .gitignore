@@ -11,7 +11,8 @@ crash.log
 credentials.csv
 aws_credentials*
 .env
-.env.*
+.env.local
+.env.production
 
 # Python
 __pycache__/

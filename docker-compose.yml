@@ -22,6 +22,11 @@ services:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - microshop-net
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -42,6 +47,17 @@ services:
     networks:
       - microshop-net
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   product-service:
     build: ./services/product-service
@@ -53,6 +69,17 @@ services:
     networks:
       - microshop-net
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   order-service:
     build: ./services/order-service
@@ -71,6 +98,17 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8003/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   user-service:
     build: ./services/user-service
@@ -83,6 +121,17 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8004/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   chat-service:
     build: ./services/chat-service
@@ -97,6 +146,17 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8005/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend:
     image: nginx:alpine
@@ -109,6 +169,16 @@ services:
     networks:
       - microshop-net
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: '0.1'
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80 > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
   prometheus:
     image: prom/prometheus:latest
@@ -121,6 +191,11 @@ services:
     networks:
       - microshop-net
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
 
   grafana:
     image: grafana/grafana:latest
@@ -135,3 +210,8 @@ services:
     networks:
       - microshop-net
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
