@@ -19,3 +19,12 @@ groups:
         annotations:
           summary: "Service {{ $labels.job }} is DOWN"
           description: "Prometheus cannot scrape {{ $labels.job }} — the service may have crashed."
+
+      - alert: OrderServiceHighLatency
+        expr: histogram_quantile(0.95, rate(order_request_duration_seconds_bucket[5m])) > 1.0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Order Service p95 latency is above 1 second"
+          description: "95th percentile request latency exceeded 1s for 1 minute — possible DB slowness."

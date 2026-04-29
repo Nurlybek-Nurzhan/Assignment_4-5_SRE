@@ -9,8 +9,10 @@ app = FastAPI(title="User Service")
 
 REQUEST_COUNT = Counter("user_requests_total", "Total requests to user service", ["method", "endpoint"])
 
-SECRET_KEY = os.getenv("JWT_SECRET", "changeme-super-secret-key")
-ALGORITHM  = "HS256"
+SECRET_KEY = os.environ.get("JWT_SECRET")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET environment variable is required but not set")
+ALGORITHM = "HS256"
 
 USERS = [
     {"id": 1, "username": "nurzhan", "email": "nurzhan@example.com", "role": "admin"},

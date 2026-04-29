@@ -11,12 +11,13 @@ app = FastAPI(title="Auth Service")
 
 REQUEST_COUNT = Counter("auth_requests_total", "Total requests to auth service", ["method", "endpoint"])
 
-SECRET_KEY = os.getenv("JWT_SECRET", "changeme-super-secret-key")
-ALGORITHM  = "HS256"
+SECRET_KEY = os.environ.get("JWT_SECRET")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET environment variable is required but not set")
+ALGORITHM = "HS256"
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Credentials loaded from environment variables, not hardcoded
 _raw = {
     os.getenv("AUTH_USER_1", "nurzhan"): os.getenv("AUTH_PASS_1", "password123"),
     os.getenv("AUTH_USER_2", "admin"):   os.getenv("AUTH_PASS_2", "admin"),

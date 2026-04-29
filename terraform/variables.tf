@@ -17,9 +17,8 @@ variable "ami_id" {
 }
 
 variable "allowed_ssh_cidr" {
-  description = "CIDR block allowed to SSH into the instance. Restrict to your IP in production."
+  description = "CIDR block allowed to SSH and monitoring ports. Set to your IP: e.g. 203.0.113.5/32"
   type        = string
-  default     = "0.0.0.0/0"
 }
 
 variable "ssh_key_name" {

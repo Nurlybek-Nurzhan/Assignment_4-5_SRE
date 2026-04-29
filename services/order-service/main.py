@@ -1,21 +1,30 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
 import psycopg2
 import os
+import time
 import uvicorn
 
 app = FastAPI(title="Order Service")
 
-REQUEST_COUNT = Counter("order_requests_total", "Total requests to order service", ["method", "endpoint"])
-ERROR_COUNT = Counter("order_errors_total", "Total errors in order service", ["type"])
+REQUEST_COUNT   = Counter("order_requests_total",   "Total requests to order service", ["method", "endpoint"])
+ERROR_COUNT     = Counter("order_errors_total",      "Total errors in order service",   ["type"])
+REQUEST_LATENCY = Histogram(
+    "order_request_duration_seconds",
+    "Request latency for order service endpoints",
+    ["endpoint"],
+    buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5]
+)
 
 DB_HOST = os.getenv("DB_HOST", "postgres")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "ordersdb")
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASS", "postgres")
+DB_PASS = os.environ.get("DB_PASS")
+if not DB_PASS:
+    raise RuntimeError("DB_PASS environment variable is required but not set")
 
 def get_db_connection():
     return psycopg2.connect(
@@ -66,6 +75,7 @@ def health():
 @app.get("/orders")
 def get_orders():
     REQUEST_COUNT.labels(method="GET", endpoint="/orders").inc()
+    start = time.time()
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -73,14 +83,17 @@ def get_orders():
         rows = cur.fetchall()
         cur.close()
         conn.close()
+        REQUEST_LATENCY.labels(endpoint="/orders").observe(time.time() - start)
         return {"orders": [{"id": r[0], "user_id": r[1], "product_id": r[2], "quantity": r[3], "status": r[4]} for r in rows]}
     except Exception as e:
         ERROR_COUNT.labels(type="db_query").inc()
+        REQUEST_LATENCY.labels(endpoint="/orders").observe(time.time() - start)
         raise HTTPException(status_code=503, detail=f"DB error: {str(e)}")
 
 @app.post("/orders")
 def create_order(order: OrderRequest):
     REQUEST_COUNT.labels(method="POST", endpoint="/orders").inc()
+    start = time.time()
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -92,9 +105,11 @@ def create_order(order: OrderRequest):
         conn.commit()
         cur.close()
         conn.close()
+        REQUEST_LATENCY.labels(endpoint="/orders").observe(time.time() - start)
         return {"order_id": order_id, "status": "pending"}
     except Exception as e:
         ERROR_COUNT.labels(type="db_insert").inc()
+        REQUEST_LATENCY.labels(endpoint="/orders").observe(time.time() - start)
         raise HTTPException(status_code=503, detail=f"DB error: {str(e)}")
 
 @app.get("/metrics")

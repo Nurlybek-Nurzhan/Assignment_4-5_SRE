@@ -11,8 +11,10 @@ app = FastAPI(title="Chat Service")
 
 REQUEST_COUNT = Counter("chat_requests_total", "Total requests to chat service", ["method", "endpoint"])
 
-SECRET_KEY = os.getenv("JWT_SECRET", "changeme-super-secret-key")
-ALGORITHM  = "HS256"
+SECRET_KEY = os.environ.get("JWT_SECRET")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET environment variable is required but not set")
+ALGORITHM = "HS256"
 
 MESSAGES = [
     {"id": 1, "from_user": "alice", "to_user": "bob",   "text": "Hey Bob!",   "timestamp": "2026-04-29T10:00:00"},
