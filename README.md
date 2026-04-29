@@ -1,4 +1,4 @@
-# MicroShop — SRE Assignment 4-5
+# MicroShop - SRE Assignment 4-5
 
 Containerized microservices system with incident response simulation and Terraform IaC on AWS.
 
@@ -41,7 +41,7 @@ docker compose up --build
 
 ### What happens
 The Order Service connects to PostgreSQL via the `DB_HOST` environment variable.
-Setting it to a wrong hostname causes every request to fail immediately — the service
+Setting it to a wrong hostname causes every request to fail immediately - the service
 process keeps running (so Prometheus shows it as `up=1`), but all business logic fails.
 
 **This is a key SRE lesson:** process liveness ≠ service health.
@@ -63,7 +63,7 @@ The real signal comes from `/health` (which checks DB connectivity) and the `ord
 | T+01:05 | `DB_HOST` corrected back to `postgres` in docker-compose.yml |
 | T+01:10 | Order Service restarted with correct config |
 | T+01:15 | `/health` returns 200: `db: connected` |
-| T+01:20 | Dashboard shows all services green — incident resolved |
+| T+01:20 | Dashboard shows all services green - incident resolved |
 
 ### Steps to reproduce
 
@@ -79,7 +79,7 @@ docker compose up -d --force-recreate order-service
 
 **Observe the failure:**
 ```bash
-# Watch logs — you will see repeated DB connection errors:
+# Watch logs - you will see repeated DB connection errors:
 docker logs -f order-service
 
 # Check health endpoint:
