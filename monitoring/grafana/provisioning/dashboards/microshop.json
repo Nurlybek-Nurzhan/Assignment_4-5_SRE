@@ -39,7 +39,7 @@
     },
     {
       "id": 2,
-      "title": "Request Rate — Auth Service (req/min)",
+      "title": "Request Rate - Auth Service (req/min)",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 4, "w": 8, "h": 8 },
       "datasource": "Prometheus",
@@ -55,7 +55,7 @@
     },
     {
       "id": 3,
-      "title": "Request Rate — Product Service (req/min)",
+      "title": "Request Rate - Product Service (req/min)",
       "type": "timeseries",
       "gridPos": { "x": 8, "y": 4, "w": 8, "h": 8 },
       "datasource": "Prometheus",
@@ -71,7 +71,7 @@
     },
     {
       "id": 4,
-      "title": "Request Rate — Order Service (req/min)",
+      "title": "Request Rate - Order Service (req/min)",
       "type": "timeseries",
       "gridPos": { "x": 16, "y": 4, "w": 8, "h": 8 },
       "datasource": "Prometheus",
@@ -87,7 +87,7 @@
     },
     {
       "id": 5,
-      "title": "Order Service — Error Rate (errors/min)",
+      "title": "Order Service - Error Rate (errors/min)",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
       "datasource": "Prometheus",
@@ -136,7 +136,7 @@
     },
     {
       "id": 7,
-      "title": "Request Rate — User & Chat Services (req/min)",
+      "title": "Request Rate - User & Chat Services (req/min)",
       "type": "timeseries",
       "gridPos": { "x": 18, "y": 12, "w": 6, "h": 8 },
       "datasource": "Prometheus",
@@ -149,6 +149,63 @@
           "color": { "mode": "palette-classic" },
           "custom": { "lineWidth": 2, "fillOpacity": 10 }
         }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Order Service - p95 Latency (seconds)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(order_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95 latency",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(order_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "p50 latency",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 1.0 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Order Service - Logs",
+      "type": "logs",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "{service=\"order-service\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
       }
     }
   ]

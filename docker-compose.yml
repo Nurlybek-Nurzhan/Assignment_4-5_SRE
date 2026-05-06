@@ -6,6 +6,7 @@ volumes:
   postgres-data:
   grafana-data:
   product-data:
+  loki-data:
 
 services:
 
@@ -13,7 +14,7 @@ services:
     image: postgres:15-alpine
     container_name: postgres
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASS:-postgres}
       POSTGRES_DB: ordersdb
     volumes:
@@ -23,7 +24,7 @@ services:
     mem_limit: 256m
     cpus: 0.5
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,8 +32,6 @@ services:
   auth-service:
     build: ./services/auth-service
     container_name: auth-service
-    ports:
-      - "8001:8001"
     environment:
       JWT_SECRET: ${JWT_SECRET:-changeme-super-secret-key}
       AUTH_USER_1: ${AUTH_USER_1:-nurzhan}
@@ -54,8 +53,6 @@ services:
   product-service:
     build: ./services/product-service
     container_name: product-service
-    ports:
-      - "8002:8002"
     volumes:
       - product-data:/app/data
     networks:
@@ -73,13 +70,11 @@ services:
   order-service:
     build: ./services/order-service
     container_name: order-service
-    ports:
-      - "8003:8003"
     environment:
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: ordersdb
-      DB_USER: postgres
+      DB_USER: ${DB_USER:-postgres}
       DB_PASS: ${DB_PASS:-postgres}
     networks:
       - microshop-net
@@ -99,8 +94,6 @@ services:
   user-service:
     build: ./services/user-service
     container_name: user-service
-    ports:
-      - "8004:8004"
     environment:
       JWT_SECRET: ${JWT_SECRET:-changeme-super-secret-key}
     networks:
@@ -121,8 +114,6 @@ services:
   chat-service:
     build: ./services/chat-service
     container_name: chat-service
-    ports:
-      - "8005:8005"
     environment:
       JWT_SECRET: ${JWT_SECRET:-changeme-super-secret-key}
     networks:
@@ -172,6 +163,47 @@ services:
     restart: unless-stopped
     mem_limit: 256m
     cpus: 0.5
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - microshop-net
+    restart: unless-stopped
+    mem_limit: 64m
+    cpus: 0.1
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - microshop-net
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: promtail
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - microshop-net
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.25
 
   grafana:
     image: grafana/grafana:latest

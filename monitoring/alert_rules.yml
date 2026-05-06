@@ -28,3 +28,12 @@ groups:
         annotations:
           summary: "Order Service p95 latency is above 1 second"
           description: "95th percentile request latency exceeded 1s for 1 minute — possible DB slowness."
+
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[1m]) * 100 > 80
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.job }}"
+          description: "{{ $labels.job }} CPU usage is above 80% for 1 minute (current: {{ $value | printf \"%.1f\" }}%)."
