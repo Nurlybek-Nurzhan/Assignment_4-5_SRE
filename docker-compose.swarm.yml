@@ -1,0 +1,292 @@
+networks:
+  microshop-net:
+    driver: overlay
+
+volumes:
+  postgres-data:
+  grafana-data:
+  product-data:
+  loki-data:
+  promtail-positions:
+
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+      POSTGRES_DB: ordersdb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  auth-service:
+    image: microshop/auth-service:latest
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-changeme-super-secret-key}
+      AUTH_USER_1: ${AUTH_USER_1:-nurzhan}
+      AUTH_PASS_1: ${AUTH_PASS_1:-password123}
+      AUTH_USER_2: ${AUTH_USER_2:-admin}
+      AUTH_PASS_2: ${AUTH_PASS_2:-admin}
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+
+  product-service:
+    image: microshop/product-service:latest
+    volumes:
+      - product-data:/app/data
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+
+  order-service:
+    image: microshop/order-service:latest
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ordersdb
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres}
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+
+  user-service:
+    image: microshop/user-service:latest
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-changeme-super-secret-key}
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+
+  chat-service:
+    image: microshop/chat-service:latest
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-changeme-super-secret-key}
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+
+  payment-service:
+    image: microshop/payment-service:latest
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+
+  frontend:
+    image: microshop/frontend:latest
+    ports:
+      - "80:80"
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.1"
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.1"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASS:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  loki:
+    image: grafana/loki:2.9.0
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - microshop-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail-positions:/tmp
+    networks:
+      - microshop-net
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"

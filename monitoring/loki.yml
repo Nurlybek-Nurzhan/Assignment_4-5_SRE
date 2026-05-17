@@ -1,3 +1,5 @@
+# auth_enabled: false is correct for single-tenant local/dev deployments.
+# Set to true and configure a tenant ID header when running Loki in multi-tenant production.
 auth_enabled: false
 
 server:

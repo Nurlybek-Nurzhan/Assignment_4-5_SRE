@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microshop-config
+  namespace: microshop
+data:
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: ordersdb
+  DB_USER: postgres
+  AUTH_USER_1: nurzhan
+  AUTH_USER_2: admin

@@ -1,0 +1,549 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: microshop
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ['alertmanager:9093']
+
+    rule_files:
+      - /etc/prometheus/alert_rules.yml
+
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      - job_name: 'auth-service'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['auth-service:8001']
+
+      - job_name: 'product-service'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['product-service:8002']
+
+      - job_name: 'order-service'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['order-service:8003']
+
+      - job_name: 'user-service'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['user-service:8004']
+
+      - job_name: 'chat-service'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['chat-service:8005']
+
+      - job_name: 'payment-service'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['payment-service:8006']
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alert-rules
+  namespace: microshop
+data:
+  alert_rules.yml: |
+    groups:
+      - name: microshop_alerts
+        rules:
+
+          - alert: OrderServiceErrors
+            expr: increase(order_errors_total[1m]) > 0
+            for: 30s
+            labels:
+              severity: critical
+            annotations:
+              summary: "Order Service is experiencing errors"
+              description: "order_errors_total has increased in the last 1 minute — DB connection likely broken."
+
+          - alert: ServiceDown
+            expr: up == 0
+            for: 30s
+            labels:
+              severity: critical
+            annotations:
+              summary: "Service {{ $labels.job }} is DOWN"
+              description: "Prometheus cannot scrape {{ $labels.job }} — the service may have crashed."
+
+          - alert: OrderServiceHighLatency
+            expr: histogram_quantile(0.95, rate(order_request_duration_seconds_bucket[5m])) > 1.0
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Order Service p95 latency is above 1 second"
+              description: "95th percentile request latency exceeded 1s for 1 minute — possible DB slowness."
+
+          - alert: HighCPUUsage
+            expr: rate(process_cpu_seconds_total[1m]) * 100 > 80
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU usage on {{ $labels.job }}"
+              description: "{{ $labels.job }} CPU usage is above 80% for 1 minute."
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: microshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+            - name: prometheus-alert-rules
+              mountPath: /etc/prometheus/alert_rules.yml
+              subPath: alert_rules.yml
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-alert-rules
+          configMap:
+            name: prometheus-alert-rules
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: microshop
+spec:
+  selector:
+    app: prometheus
+  type: NodePort
+  ports:
+    - port: 9090
+      targetPort: 9090
+      nodePort: 30090
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: microshop
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+
+    route:
+      receiver: 'default-receiver'
+      group_by: ['alertname', 'severity']
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 1h
+
+      routes:
+        - match:
+            severity: critical
+          receiver: 'critical-receiver'
+          group_wait: 5s
+          repeat_interval: 15m
+
+        - match:
+            severity: warning
+          receiver: 'default-receiver'
+          repeat_interval: 1h
+
+    receivers:
+      # Replace the webhook URL with a real endpoint (Slack, PagerDuty, email SMTP, etc.)
+      # before deploying to production. localhost:5001 is a demo placeholder only.
+      - name: 'default-receiver'
+        webhook_configs:
+          - url: 'http://localhost:5001/alerts'
+            send_resolved: true
+
+      - name: 'critical-receiver'
+        webhook_configs:
+          - url: 'http://localhost:5001/alerts'
+            send_resolved: true
+
+    inhibit_rules:
+      - source_match:
+          severity: critical
+        target_match:
+          severity: warning
+        equal: ['alertname']
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: microshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:latest
+          ports:
+            - containerPort: 9093
+          volumeMounts:
+            - name: alertmanager-config
+              mountPath: /etc/alertmanager/alertmanager.yml
+              subPath: alertmanager.yml
+          resources:
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+      volumes:
+        - name: alertmanager-config
+          configMap:
+            name: alertmanager-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: microshop
+spec:
+  selector:
+    app: alertmanager
+  type: NodePort
+  ports:
+    - port: 9093
+      targetPort: 9093
+      nodePort: 30093
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: loki-pvc
+  namespace: microshop
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-config
+  namespace: microshop
+data:
+  local-config.yaml: |
+    auth_enabled: false
+
+    server:
+      http_listen_port: 3100
+
+    ingester:
+      wal:
+        dir: /loki/wal
+      lifecycler:
+        address: 127.0.0.1
+        ring:
+          kvstore:
+            store: inmemory
+          replication_factor: 1
+        final_sleep: 0s
+      chunk_idle_period: 1h
+      max_chunk_age: 1h
+      chunk_target_size: 1048576
+      chunk_retain_period: 30s
+
+    schema_config:
+      configs:
+        - from: 2020-10-24
+          store: boltdb-shipper
+          object_store: filesystem
+          schema: v11
+          index:
+            prefix: index_
+            period: 24h
+
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /loki/boltdb-shipper-active
+        cache_location: /loki/boltdb-shipper-cache
+        cache_ttl: 24h
+        shared_store: filesystem
+      filesystem:
+        directory: /loki/chunks
+
+    compactor:
+      working_directory: /loki/boltdb-shipper-compactor
+      shared_store: filesystem
+
+    limits_config:
+      reject_old_samples: true
+      reject_old_samples_max_age: 168h
+
+    chunk_store_config:
+      max_look_back_period: 0s
+
+    table_manager:
+      retention_deletes_enabled: false
+      retention_period: 0s
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+  namespace: microshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki
+  template:
+    metadata:
+      labels:
+        app: loki
+    spec:
+      containers:
+        - name: loki
+          image: grafana/loki:2.9.0
+          ports:
+            - containerPort: 3100
+          args:
+            - -config.file=/etc/loki/local-config.yaml
+          volumeMounts:
+            - name: loki-config
+              mountPath: /etc/loki/local-config.yaml
+              subPath: local-config.yaml
+            - name: loki-storage
+              mountPath: /loki
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      volumes:
+        - name: loki-config
+          configMap:
+            name: loki-config
+        - name: loki-storage
+          persistentVolumeClaim:
+            claimName: loki-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki
+  namespace: microshop
+spec:
+  selector:
+    app: loki
+  ports:
+    - port: 3100
+      targetPort: 3100
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: microshop
+data:
+  config.yml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [microshop]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: service
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+  namespace: microshop
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: promtail
+rules:
+  - apiGroups: [""]
+    resources: [nodes, nodes/proxy, services, endpoints, pods]
+    verbs: [get, watch, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: promtail
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: promtail
+subjects:
+  - kind: ServiceAccount
+    name: promtail
+    namespace: microshop
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: microshop
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+    spec:
+      serviceAccountName: promtail
+      containers:
+        - name: promtail
+          image: grafana/promtail:2.9.0
+          args:
+            - -config.file=/etc/promtail/config.yml
+          volumeMounts:
+            - name: promtail-config
+              mountPath: /etc/promtail/config.yml
+              subPath: config.yml
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
+      volumes:
+        - name: promtail-config
+          configMap:
+            name: promtail-config
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: microshop
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: microshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: microshop-secret
+                  key: GRAFANA_USER
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: microshop-secret
+                  key: GRAFANA_PASS
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      volumes:
+        - name: grafana-storage
+          persistentVolumeClaim:
+            claimName: grafana-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: microshop
+spec:
+  selector:
+    app: grafana
+  type: NodePort
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30030

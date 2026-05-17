@@ -131,30 +131,50 @@ services:
       retries: 3
       start_period: 10s
 
-  frontend:
-    image: nginx:alpine
-    container_name: frontend
-    ports:
-      - "80:80"
-    volumes:
-      - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
-      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  payment-service:
+    build: ./services/payment-service
+    container_name: payment-service
     networks:
       - microshop-net
     restart: unless-stopped
-    mem_limit: 64m
-    cpus: 0.1
+    mem_limit: 128m
+    cpus: 0.25
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:80 > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8006/health')\""]
       interval: 15s
       timeout: 5s
       retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    networks:
+      - microshop-net
+    depends_on:
+      - auth-service
+      - product-service
+      - order-service
+      - user-service
+      - chat-service
+      - payment-service
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 64m
+    cpus: "0.1"
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
@@ -168,7 +188,7 @@ services:
     image: prom/alertmanager:latest
     container_name: alertmanager
     ports:
-      - "9093:9093"
+      - "127.0.0.1:9093:9093"
     volumes:
       - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     networks:
@@ -181,7 +201,7 @@ services:
     image: grafana/loki:2.9.0
     container_name: loki
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
@@ -209,7 +229,7 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASS:-admin}

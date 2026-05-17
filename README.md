@@ -20,8 +20,9 @@ Containerized microservices system with incident response simulation, Terraform 
 | Order Service  | —         | 8003          | Order management (internal only)         |
 | User Service   | —         | 8004          | User profiles (internal only)            |
 | Chat Service   | —         | 8005          | Messaging (internal only)                |
+| Payment Service| —         | 8006          | Payment processing (internal only)       |
 
-> **Security note:** Microservices (8001-8005) are NOT bound to the host. They are only reachable through the Nginx reverse proxy on port 80, or from within the Docker network.
+> **Security note:** Microservices (8001-8006) are NOT bound to the host. They are only reachable through the Nginx reverse proxy on port 80, or from within the Docker network.
 
 ---
 
@@ -112,7 +113,7 @@ curl http://localhost:8003/health
 
 ## Terraform (Assignment 5)
 
-Provisions an AWS EC2 instance (t3.micro) with a security group. Microservice ports (8001-8005) are **not opened** in the security group — only port 80 (HTTP), 3000 (Grafana), 9090 (Prometheus), 9093 (Alertmanager), and 22 (SSH) are exposed, all except HTTP restricted to `allowed_ssh_cidr`.
+Provisions an AWS EC2 instance (t3.micro) with a security group. Microservice ports (8001-8006) are **not opened** in the security group — only port 80 (HTTP), 3000 (Grafana), 9090 (Prometheus), 9093 (Alertmanager), and 22 (SSH) are exposed, all except HTTP restricted to `allowed_ssh_cidr`.
 
 ```bash
 cd terraform
@@ -173,7 +174,7 @@ Promtail runs as a sidecar and collects all Docker container logs via the Docker
 ## Security: Port Hardening
 
 **Docker (не забудь закрыть порты — don't forget to close ports):**
-- Microservices (8001-8005): **no host binding** — internal Docker network only
+- Microservices (8001-8006): **no host binding** — internal Docker network only
 - Nginx on port 80: the single public entry point
 - Prometheus 9090 and Grafana 3000: host-bound for dev/monitoring access only
 
@@ -181,7 +182,7 @@ Promtail runs as a sidecar and collects all Docker container logs via the Docker
 - Port 22 (SSH): restricted to `allowed_ssh_cidr` (your IP/32)
 - Port 80 (HTTP): public
 - Port 3000, 9090, 9093: restricted to `allowed_ssh_cidr`
-- Ports 8001-8005: **not opened at all** — microservices never exposed through the firewall
+- Ports 8001-8006: **not opened at all** — microservices never exposed through the firewall
 
 ---
 
@@ -192,7 +193,7 @@ Promtail runs as a sidecar and collects all Docker container logs via the Docker
 Use the included script to generate concurrent load against all services:
 
 ```bash
-# Default: 10 workers, 60 seconds
+# Default: 10 workers, 60 seconds, using default test credentials
 python load_test.py
 
 # Higher load for stress testing
@@ -200,9 +201,12 @@ python load_test.py --workers 20 --duration 120
 
 # Against AWS EC2
 python load_test.py --host http://<instance_public_ip> --workers 10 --duration 60
+
+# Custom credentials (must match AUTH_USER_1/AUTH_PASS_1 in .env)
+python load_test.py --username nurzhan --password yourpassword
 ```
 
-The script sends requests to all endpoints (products, orders, users, chat) via the Nginx reverse proxy and prints a live RPS + error counter. Watch Grafana at http://localhost:3000 during the run.
+The script sends requests to all endpoints (products, orders, users, chat, payments) via the Nginx reverse proxy and prints a live RPS + error counter. Watch Grafana at http://localhost:3000 during the run.
 
 ### Metrics Collected
 
@@ -242,7 +246,7 @@ deploy:
 
 **Database optimization** — add connection pooling (PgBouncer) in front of PostgreSQL to eliminate per-request connection overhead.
 
-**Long-term** — migrate to Kubernetes with HPA (Horizontal Pod Autoscaler) triggered on CPU threshold via the same `process_cpu_seconds_total` metric already collected by Prometheus.
+**Kubernetes HPA** — `k8s/hpa.yaml` defines HorizontalPodAutoscalers for order-service (2–6 replicas) and payment-service (2–4 replicas), both triggered at 70% CPU utilization using the `autoscaling/v2` API.
 
 ---
 
@@ -255,10 +259,35 @@ assignment-4-5/
 │   ├── product-service/    # FastAPI, file-persisted catalog
 │   ├── order-service/      # FastAPI, PostgreSQL, incident target
 │   ├── user-service/       # FastAPI, user profiles
-│   └── chat-service/       # FastAPI, JWT-protected messaging
+│   ├── chat-service/       # FastAPI, JWT-protected messaging
+│   └── payment-service/    # FastAPI, payment processing with counters
 ├── frontend/
-│   ├── index.html          # Dashboard with login form
-│   └── nginx.conf          # Reverse proxy config
+│   ├── Dockerfile          # Multi-stage: Node 20 build → nginx:alpine serve
+│   ├── package.json        # React 18, React Router v6, Vite 5, Tailwind CSS v3
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   ├── nginx.conf          # Reverse proxy + SPA fallback + security headers
+│   ├── index.html          # Vite entry point
+│   └── src/
+│       ├── main.jsx
+│       ├── index.css       # Tailwind directives + custom component classes
+│       ├── App.jsx         # Router + AuthProvider + 6 routes
+│       ├── context/
+│       │   └── AuthContext.jsx  # JWT token in localStorage, login/logout
+│       ├── api/
+│       │   └── client.js        # All fetch wrappers for 6 services
+│       ├── components/
+│       │   ├── Navbar.jsx       # Sticky nav with active tabs + login dropdown
+│       │   ├── ServiceCard.jsx  # Health card with 10s auto-refresh
+│       │   └── StatusDot.jsx    # Animated status indicator
+│       └── pages/
+│           ├── Dashboard.jsx    # 6 health cards + stats + monitoring links
+│           ├── Products.jsx     # Product catalog table
+│           ├── Orders.jsx       # Orders table + create order form
+│           ├── Users.jsx        # JWT-protected user list
+│           ├── Chat.jsx         # JWT-protected chat with send form
+│           └── Payments.jsx     # Payment form with inline result
 ├── monitoring/
 │   ├── prometheus.yml      # Scrape config + Alertmanager wiring
 │   ├── alert_rules.yml     # OrderServiceErrors, ServiceDown, HighLatency, HighCPU
@@ -269,13 +298,31 @@ assignment-4-5/
 │       └── provisioning/
 │           ├── datasources/ # Prometheus + Loki datasources
 │           └── dashboards/  # Auto-provisioned dashboard
+├── k8s/
+│   ├── namespace.yaml
+│   ├── secret.yaml         # JWT, DB, Grafana credentials
+│   ├── configmap.yaml      # DB_HOST, DB_NAME env vars
+│   ├── postgres.yaml       # StatefulSet + PVC
+│   ├── frontend.yaml       # Nginx Deployment + NodePort 30080
+│   ├── auth-service.yaml
+│   ├── product-service.yaml
+│   ├── order-service.yaml
+│   ├── user-service.yaml
+│   ├── chat-service.yaml
+│   ├── payment-service.yaml
+│   ├── hpa.yaml            # HPA for order-service (2–6) and payment-service (2–4) at 70% CPU
+│   └── monitoring.yaml     # Prometheus + Alertmanager + Loki + Promtail + Grafana
+├── ansible/
+│   ├── playbook.yml        # Full deployment: Docker install → clone → build → start
+│   └── inventory.ini       # EC2 host config (set IP + SSH key before use)
 ├── terraform/
 │   ├── main.tf             # AWS EC2 + security group (ports hardened)
 │   ├── variables.tf
 │   ├── outputs.tf
 │   └── terraform.tfvars    # Set allowed_ssh_cidr to YOUR_IP/32
-├── load_test.py            # Concurrent load simulator (Assignment 6)
-├── docker-compose.yml
+├── load_test.py            # Concurrent load simulator (all 6 services)
+├── docker-compose.yml      # Full dev/prod stack (12 services)
+├── docker-compose.swarm.yml # Docker Swarm deployment with replicas
 ├── .env.example
 └── README.md
 ```

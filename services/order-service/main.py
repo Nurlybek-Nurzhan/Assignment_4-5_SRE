@@ -101,7 +101,10 @@ def create_order(order: OrderRequest):
             "INSERT INTO orders (user_id, product_id, quantity) VALUES (%s, %s, %s) RETURNING id",
             (order.user_id, order.product_id, order.quantity)
         )
-        order_id = cur.fetchone()[0]
+        row = cur.fetchone()
+        if row is None:
+            raise Exception("INSERT returned no row")
+        order_id = row[0]
         conn.commit()
         cur.close()
         conn.close()

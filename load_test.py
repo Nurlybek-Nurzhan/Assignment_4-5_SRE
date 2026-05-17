@@ -5,7 +5,6 @@ import time
 import urllib.request
 import urllib.error
 import json
-import sys
 from collections import defaultdict
 
 parser = argparse.ArgumentParser(description="MicroShop load simulator")
@@ -16,11 +15,15 @@ parser.add_argument("--duration", type=int, default=60, help="Test duration in s
 parser.add_argument(
     "--workers", type=int, default=10, help="Number of concurrent worker threads"
 )
+parser.add_argument("--username", default="nurzhan", help="Auth username")
+parser.add_argument("--password", default="password123", help="Auth password")
 args = parser.parse_args()
 
 BASE = args.host.rstrip("/")
 DURATION = args.duration
 WORKERS = args.workers
+USERNAME = args.username
+PASSWORD = args.password
 
 lock = threading.Lock()
 counts = defaultdict(int)
@@ -46,7 +49,7 @@ def request(path, method="GET", data=None, token=None):
 
 def get_token():
     status, body = request(
-        "/api/auth/login", "POST", {"username": "nurzhan", "password": "password123"}
+        "/api/auth/login", "POST", {"username": USERNAME, "password": PASSWORD}
     )
     if status == 200:
         return body.get("token")
@@ -62,6 +65,7 @@ def worker():
             "/api/auth/health",
             "/api/products/health",
             "/api/orders/health",
+            "/api/payments/health",
         ]:
             if stop_evt.is_set():
                 break
@@ -90,6 +94,16 @@ def worker():
             counts["POST /api/orders/orders"] += 1
             if status not in (200, 201):
                 errors["POST /api/orders/orders"] += 1
+
+        if stop_evt.is_set():
+            break
+        status, _ = request(
+            "/api/payments/pay", "POST", {"order_id": 1, "amount": 9.99, "currency": "USD", "card_last4": "4242"}
+        )
+        with lock:
+            counts["POST /api/payments/pay"] += 1
+            if status not in (200, 201):
+                errors["POST /api/payments/pay"] += 1
 
         time.sleep(0.05)
 

@@ -21,6 +21,9 @@ route:
       repeat_interval: 1h
 
 receivers:
+  # Replace the webhook URL below with a real endpoint (Slack, PagerDuty, email SMTP, etc.)
+  # before deploying to production. The localhost:5001 address is a demo placeholder only.
+  # Example Slack: https://hooks.slack.com/services/T.../B.../...
   - name: 'default-receiver'
     webhook_configs:
       - url: 'http://localhost:5001/alerts'
